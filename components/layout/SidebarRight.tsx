@@ -1,128 +1,142 @@
 "use client"
 
 import { Button } from '@/components/ui/button';
-import { CommunityCard } from '@/components/communities/CommunityCard';
-import { Settings, FileText, Calendar, Users, Shield } from 'lucide-react';
-import { useStore } from '@/store/useStore';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu, Globe } from 'lucide-react';
 
 export function SidebarRight() {
-  const { activeCommunity } = useStore();
+  const router = useRouter();
+  const communities = useQuery(api.communities.getAllCommunities);
+  const joinCommunity = useMutation(api.communities.joinCommunity);
+  const leaveCommunity = useMutation(api.communities.leaveCommunity);
 
-  const communityInfo = {
-    name: 'Informatique',
-    description: 'Communauté dédiée aux étudiants en informatique. Partagez vos projets, posez des questions et collaborez !',
-    members: 452,
-    online: 34,
-    created: '2023',
-    rules: [
-      'Respectez les autres membres',
-      'Pas de spam ou de publicité',
-      'Restez dans le thème informatique',
-      'Partagez du code proprement formaté',
-    ],
+  const handleToggleFollow = async (e: React.MouseEvent, communityId: Id<"communities">, communityName: string, isJoined: boolean) => {
+    e.stopPropagation();
+    try {
+      if (isJoined) {
+        await leaveCommunity({ communityId });
+        toast.success(`Vous ne suivez plus ${communityName}`);
+      } else {
+        await joinCommunity({ communityId });
+        toast.success(`Vous avez rejoint ${communityName}`);
+      }
+    } catch (error) {
+      toast.error("Erreur lors de l'action");
+      console.error(error);
+    }
   };
 
-  return (
-    <div className="lg:block sticky top-16 h-[calc(100vh-4rem)]">
-      {/* Community Card - Style Reddit */}
-      <div className="rounded-lg bg-white p-4 shadow-sm border border-gray-200">
-        <div className="mb-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">r/</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">r/{communityInfo.name}</h2>
-              <p className="text-sm text-gray-500">{communityInfo.description}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1">
-              <Users className="h-4 w-4 text-gray-400" />
-              <span className="font-medium">{communityInfo.members}</span>
-              <span className="text-gray-500">membres</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span className="font-medium">{communityInfo.online}</span>
-              <span className="text-gray-500">en ligne</span>
-            </div>
-          </div>
+  const handleNavigate = (communityId: string) => {
+    router.push(`/communities/${communityId}`);
+  }
+
+  const SidebarContent = () => (
+    <div className="h-full overflow-y-auto">
+      {/* Suggestions de communautés */}
+      <div className="rounded-xl bg-gray-50/50 p-4 border border-gray-200">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Communautés</h2>
+
+        <div className="space-y-4">
+          {communities === undefined ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : communities.length === 0 ? (
+            <div className="text-sm text-gray-500">Aucune communauté disponible.</div>
+          ) : (
+            communities.slice(0, 10).map((community) => (
+              <div
+                key={community._id}
+                className="flex items-center justify-between group cursor-pointer"
+                onClick={() => handleNavigate(community._id)}
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <Avatar className="h-10 w-10 border border-gray-200">
+                    <AvatarImage src={community.image} />
+                    <AvatarFallback className="bg-white text-gray-700 font-bold">
+                      {community.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 text-sm truncate group-hover:underline">
+                      r/{community.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 truncate">{community.memberCount} membres</p>
+                  </div>
+                </div>
+                <Button
+                  variant={community.isJoined ? "outline" : "secondary"}
+                  size="sm"
+                  className={`rounded-full px-4 h-8 text-xs font-bold transition-all active:scale-95 ${community.isJoined
+                      ? "border-gray-300 text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                      : "bg-gray-900 text-white hover:bg-gray-800"
+                    }`}
+                  onClick={(e) => handleToggleFollow(e, community._id, community.name, community.isJoined)}
+                >
+                  {community.isJoined ? "Suivi" : "Suivre"}
+                </Button>
+              </div>
+            ))
+          )}
         </div>
-        
-        <div className="space-y-2">
-          <Button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-lg font-medium">
-            Rejoindre
+
+        {communities && communities.length > 10 && (
+          <Button variant="ghost" className="w-full mt-4 text-orange-500 hover:text-orange-600 hover:bg-orange-50 text-sm">
+            Voir plus
           </Button>
-          <Button variant="outline" className="w-full border-gray-300 hover:border-orange-400 hover:text-orange-600 rounded-lg">
-            Créer un post
-          </Button>
-        </div>
+        )}
       </div>
 
-      {/* Règles - Style Reddit */}
-      <div className="rounded-lg bg-white p-5 shadow-sm border border-gray-200">
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="h-5 w-5 text-orange-500" />
-          <h3 className="text-lg font-bold text-gray-900">Règles de la communauté</h3>
+      <div className="mt-4 text-xs text-gray-400 px-4 pb-4">
+        <div className="flex flex-wrap gap-x-2 gap-y-1">
+          <span className="hover:underline cursor-pointer">Conditions</span>
+          <span className="hover:underline cursor-pointer">Confidentialité</span>
+          <span className="hover:underline cursor-pointer">Cookies</span>
+          <span className="hover:underline cursor-pointer">Plus</span>
         </div>
-        <ul className="space-y-3">
-          {communityInfo.rules.map((rule, index) => (
-            <li key={index} className="flex items-start gap-3 text-sm">
-              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-600">
-                {index + 1}
-              </span>
-              <span className="text-gray-700">{rule}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Événements */}
-      <div className="rounded-lg bg-white p-5 shadow-sm border border-gray-200">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-orange-500" />
-            <h3 className="text-lg font-bold text-gray-900">Événements à venir</h3>
-          </div>
-        </div>
-        <div className="space-y-3">
-          <div className="group cursor-pointer rounded-lg border border-orange-100 bg-orange-50 p-3 transition-all hover:bg-orange-100">
-            <div className="text-sm font-bold text-orange-900 group-hover:text-orange-700">Hackathon IA</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-orange-700">
-              <span className="font-medium">25-26 Nov</span>
-              <span>•</span>
-              <span>Campus Principal</span>
-            </div>
-          </div>
-          <div className="group cursor-pointer rounded-lg border border-blue-100 bg-blue-50 p-3 transition-all hover:bg-blue-100">
-            <div className="text-sm font-bold text-blue-900 group-hover:text-blue-700">Atelier Git & GitHub</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-blue-700">
-              <span className="font-medium">28 Nov</span>
-              <span>•</span>
-              <span>Salle B203</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Liens personnalisés */}
-      <div className="rounded-lg bg-gray-50 p-4 border border-gray-200">
-        <div className="space-y-1">
-          <Button variant="ghost" className="w-full justify-start h-9 px-3 text-sm text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-md">
-            <Settings className="mr-2 h-4 w-4" />
-            Paramètres du compte
-          </Button>
-          <Button variant="ghost" className="w-full justify-start h-9 px-3 text-sm text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-md">
-            <FileText className="mr-2 h-4 w-4" />
-            Mes publications
-          </Button>
-        </div>
-        <div className="mt-4 text-xs text-gray-400 text-center">
-          Campus Connect © 2024. All rights reserved.
+        <div className="mt-2">
+          Campus Connect © 2024.
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <div className="hidden xl:block sticky top-16 h-[calc(100vh-4rem)]">
+        <SidebarContent />
+      </div>
+
+      <div className="xl:hidden">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-600 hover:text-orange-600"
+            >
+              <Globe className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-[85vw] max-w-sm p-4 pt-10">
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+      </div>
+    </>
   );
 }

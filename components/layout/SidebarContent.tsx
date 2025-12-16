@@ -240,7 +240,7 @@ export function SidebarContent() {
                                                 )}
                                             </div>
                                             <div className="text-xs text-gray-500">
-                                                {community.members.toLocaleString()} membres
+                                                {community.members.toLocaleString('fr-FR')} membres
                                             </div>
                                         </div>
                                         {activeCommunity === community.id && (

@@ -16,6 +16,11 @@ export default defineSchema({
     name: v.string(),              
     slug: v.string(),              
     description: v.optional(v.string()),
+    image: v.optional(v.string()),
+    communityType: v.union(
+      v.literal("public"),
+      v.literal("private")
+    ),
     createdBy: v.id("users"),
     createdAt: v.number(),
   })
@@ -26,7 +31,8 @@ export default defineSchema({
     title: v.string(),
     content: v.string(),
     authorId: v.id("users"),
-    communityId: v.id("communities"),
+    communityId: v.optional(v.id("communities")),
+    image: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })

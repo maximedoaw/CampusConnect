@@ -1,170 +1,192 @@
+// app/feed/Feed.tsx
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/components/posts/PostCard';
+import { PostSkeleton } from '@/components/posts/PostSkeleton';
 import { useState } from 'react';
-import { 
-  MessageSquarePlus, 
-  Flame, 
-  TrendingUp, 
-  Clock, 
+import {
+  Flame,
+  TrendingUp,
+  Clock,
   Filter,
   Plus,
   Camera,
-  Link as LinkIcon,
-  BarChart3,
-  Mic2,
-  Search,
   Users
 } from 'lucide-react';
 import { CreatePost } from '../posts/CreatePost';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
-
-const mockPosts = [
-  {
-    id: '1',
-    title: 'Recherche partenaire pour projet IA',
-    content: 'Je travaille sur un projet de classification d\'images médicales et je cherche un partenaire avec des connaissances en TensorFlow/PyTorch.',
-    author: 'Marie D.',
-    authorRole: 'Master IA',
-    authorAvatar: 'MD',
-    community: 'Informatique',
-    timeAgo: '2h',
-    comments: 12,
-    upvotes: 45,
-    isUpvoted: true,
-    engagement: 'high' as const
-  },
-  {
-    id: '2',
-    title: 'Examens finaux - Conseils de révision',
-    content: 'Partagez vos techniques de révision efficaces pour les exams de fin de semestre.',
-    author: 'Thomas L.',
-    authorRole: 'Licence 3',
-    authorAvatar: 'TL',
-    community: 'Promo 2024',
-    timeAgo: '5h',
-    comments: 28,
-    upvotes: 89,
-    isUpvoted: false,
-    engagement: 'very-high' as const
-  },
-  {
-    id: '3',
-    title: 'Concert gratuit vendredi',
-    content: 'Notre groupe donne un concert gratuit vendredi soir à l\'amphithéâtre. Venez nombreux !',
-    author: 'Sophie M.',
-    authorRole: 'Club Musique',
-    authorAvatar: 'SM',
-    community: 'Club Musique',
-    timeAgo: '1j',
-    comments: 15,
-    upvotes: 56,
-    isUpvoted: true,
-    engagement: 'medium' as const
-  },
-];
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useUser } from '@clerk/nextjs';
 
 export function Feed() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [sortBy, setSortBy] = useState('hot');
 
+  const posts = useQuery(api.posts.getFeed);
+  const user = useUser();
+
   return (
     <>
       <div className="space-y-6">
-        {/* Création de post */}
+        {/* Création de post avec Skeleton */}
         <div className="rounded-xl bg-white p-4 border border-gray-200">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-orange-100 text-orange-600">
-                <Users className="h-5 w-5" />
-              </AvatarFallback>
-            </Avatar>
-            
-            <Button
-              variant="outline"
-              className="flex-1 h-12 justify-start text-gray-500 hover:text-gray-700 border-gray-300 hover:border-orange-400 rounded-lg"
-              onClick={() => setShowCreatePost(true)}
-            >
-              Créer un post...
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 text-gray-500"
-                onClick={() => setShowCreatePost(true)}
-              >
-                <Camera className="h-5 w-5" />
-              </Button>
-              <Button 
-                className="bg-orange-500 hover:bg-orange-600 rounded-lg"
-                onClick={() => setShowCreatePost(true)}
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+          {!user ? (
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="flex-1 h-12 rounded-lg" />
+              <Skeleton className="h-10 w-10 rounded-lg" />
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-orange-100 text-orange-600">
+                  <Users className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+
+              <Button
+                variant="outline"
+                className="flex-1 h-12 justify-start text-gray-500 hover:text-gray-700 border-gray-300 hover:border-orange-400 rounded-lg"
+                onClick={() => setShowCreatePost(true)}
+              >
+                Créer un post...
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 text-gray-500"
+                  onClick={() => setShowCreatePost(true)}
+                >
+                  <Camera className="h-5 w-5" />
+                </Button>
+                <Button
+                  className="bg-orange-500 hover:bg-orange-600 rounded-lg"
+                  onClick={() => setShowCreatePost(true)}
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Filtres */}
+        {/* Filtres avec Skeleton */}
         <div className="rounded-xl bg-white p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Posts récents</h3>
-            <Button variant="ghost" size="sm" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filtres
-            </Button>
+            {!posts ? (
+              <>
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-8 w-20" />
+              </>
+            ) : (
+              <>
+                <h3 className="font-semibold text-gray-900">Posts récents</h3>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  Filtres
+                </Button>
+              </>
+            )}
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              variant={sortBy === 'hot' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy('hot')}
-              className={`gap-2 ${sortBy === 'hot' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
-            >
-              <Flame className="h-4 w-4" />
-              Tendances
-            </Button>
-            
-            <Button
-              variant={sortBy === 'new' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy('new')}
-              className="gap-2"
-            >
-              <Clock className="h-4 w-4" />
-              Récents
-            </Button>
-            
-            <Button
-              variant={sortBy === 'top' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy('top')}
-              className="gap-2"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Top
-            </Button>
-          </div>
+          {!posts ? (
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-24 rounded-lg" />
+              <Skeleton className="h-9 w-24 rounded-lg" />
+              <Skeleton className="h-9 w-24 rounded-lg" />
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                variant={sortBy === 'hot' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy('hot')}
+                className={`gap-2 ${sortBy === 'hot' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
+              >
+                <Flame className="h-4 w-4" />
+                Tendances
+              </Button>
+
+              <Button
+                variant={sortBy === 'new' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy('new')}
+                className="gap-2"
+              >
+                <Clock className="h-4 w-4" />
+                Récents
+              </Button>
+
+              <Button
+                variant={sortBy === 'top' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy('top')}
+                className="gap-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Top
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Posts */}
+        {/* Posts avec Skeleton loaders */}
         <div className="space-y-4">
-          {mockPosts.map((post) => (
-            <PostCard key={post.id} {...post} />
-          ))}
+          {!posts ? (
+            // Display multiple skeleton loaders
+            Array.from({ length: 3 }).map((_, index) => (
+              <PostSkeleton key={index} />
+            ))
+          ) : posts.length === 0 ? (
+            <div className="bg-white p-8 rounded-xl border border-gray-200 text-center">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 mb-4">
+                <Flame className="h-6 w-6 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">C'est calme ici...</h3>
+              <p className="mt-1 text-gray-500">Soyez le premier à publier quelque chose !</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setShowCreatePost(true)}
+              >
+                Créer un post
+              </Button>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <PostCard
+                key={post._id}
+                id={post._id}
+                title={post.title}
+                content={post.content}
+                createdAt={post.createdAt}
+                image={post.image}
+                author={post.author}
+                community={post.community}
+                comments={0}
+                likes={0}
+              />
+            ))
+          )}
         </div>
 
-        {/* Charger plus */}
-        <div className="text-center">
-          <Button variant="outline" className="rounded-lg">
-            Charger plus de posts
-          </Button>
-        </div>
+        {/* Charger plus avec Skeleton */}
+        {!posts ? (
+          <div className="text-center">
+            <Skeleton className="h-10 w-40 mx-auto rounded-lg" />
+          </div>
+        ) : posts.length > 0 && (
+          <div className="text-center">
+            <Button variant="outline" className="rounded-lg">
+              Charger plus de posts
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Modal création post */}

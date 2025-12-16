@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Lock, Globe, Users, Hash, Image } from 'lucide-react';
+import { X, Lock, Globe, Users, Image } from 'lucide-react';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import toast from 'react-hot-toast';
 
 interface CreateCommunityProps {
   onClose: () => void;
@@ -15,67 +18,86 @@ interface CreateCommunityProps {
 
 const communityTypes = [
   { id: 'public', name: 'Publique', icon: Globe, description: 'Visible par tous, tout le monde peut poster' },
-  { id: 'restricted', name: 'Restreinte', icon: Users, description: 'Visible par tous, modération des posts' },
   { id: 'private', name: 'Privée', icon: Lock, description: 'Visible et accessible sur invitation seulement' },
-];
-
-const categories = [
-  { id: 'academic', name: 'Académique' },
-  { id: 'social', name: 'Social' },
-  { id: 'sports', name: 'Sports' },
-  { id: 'arts', name: 'Arts & Culture' },
-  { id: 'tech', name: 'Technologie' },
-  { id: 'other', name: 'Autre' },
 ];
 
 export function CreateCommunity({ onClose }: CreateCommunityProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [communityType, setCommunityType] = useState('public');
-  const [category, setCategory] = useState('');
-  const [rules, setRules] = useState<string[]>(['']);
+  const [communityType, setCommunityType] = useState<'public' | 'private'>('public');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const createCommunity = useMutation(api.communities.createCommunity);
+  const generateUploadUrl = useMutation(api.posts.generateUploadUrl); // Reusing upload URL generation from posts
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulation d'envoi
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('Communauté créée:', {
-      name,
-      description,
-      type: communityType,
-      category,
-      rules: rules.filter(r => r.trim() !== ''),
-    });
-    
-    setIsSubmitting(false);
-    onClose();
-  };
 
-  const addRule = () => {
-    setRules([...rules, '']);
-  };
+    try {
+      let storageId: Id<"_storage"> | undefined = undefined;
 
-  const updateRule = (index: number, value: string) => {
-    const newRules = [...rules];
-    newRules[index] = value;
-    setRules(newRules);
-  };
+      if (selectedImage) {
+        const postUrl = await generateUploadUrl();
+        const result = await fetch(postUrl, {
+          method: "POST",
+          headers: { "Content-Type": selectedImage.type },
+          body: selectedImage,
+        });
 
-  const removeRule = (index: number) => {
-    if (rules.length > 1) {
-      setRules(rules.filter((_, i) => i !== index));
+        if (!result.ok) throw new Error("Upload failed");
+
+        const json = await result.json();
+        storageId = json.storageId;
+      }
+
+      await createCommunity({
+        name,
+        slug: generateSlug(name),
+        description,
+        image: storageId,
+        communityType,
+      });
+
+      toast.success('Communauté créée avec succès !');
+      onClose();
+    } catch (error) {
+      console.error("Failed to create community:", error);
+      toast.error("Erreur lors de la création de la communauté.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const selectedType = communityTypes.find(type => type.id === communityType);
+  const selectedTypeData = communityTypes.find(type => type.id === communityType);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -95,7 +117,7 @@ export function CreateCommunity({ onClose }: CreateCommunityProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
           {/* Nom de la communauté */}
           <div className="space-y-2">
             <Label htmlFor="name">
@@ -117,7 +139,7 @@ export function CreateCommunity({ onClose }: CreateCommunityProps) {
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500">
-                Les noms ne peuvent pas être changés
+                Slug: {generateSlug(name)}
               </span>
               <span className={`font-medium ${name.length >= 21 ? 'text-red-500' : 'text-gray-500'}`}>
                 {name.length}/21
@@ -147,14 +169,14 @@ export function CreateCommunity({ onClose }: CreateCommunityProps) {
           {/* Type de communauté */}
           <div className="space-y-3">
             <Label>Type de communauté</Label>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {communityTypes.map((type) => (
                 <Button
                   key={type.id}
                   type="button"
                   variant={communityType === type.id ? 'default' : 'outline'}
                   className={`h-auto flex-col items-start p-4 text-left ${communityType === type.id ? 'bg-blue-600 hover:bg-blue-700 border-blue-600' : 'hover:border-blue-300'}`}
-                  onClick={() => setCommunityType(type.id)}
+                  onClick={() => setCommunityType(type.id as 'public' | 'private')}
                 >
                   <type.icon className="mb-2 h-5 w-5" />
                   <div className="font-medium">{type.name}</div>
@@ -164,96 +186,40 @@ export function CreateCommunity({ onClose }: CreateCommunityProps) {
             </div>
           </div>
 
-          {/* Catégorie */}
-          <div className="space-y-2">
-            <Label htmlFor="category">Catégorie</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir une catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Règles */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Règles de la communauté</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addRule}
-              >
-                Ajouter une règle
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {rules.map((rule, index) => (
-                <div key={index} className="flex gap-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-100">
-                    <span className="font-semibold text-gray-600">{index + 1}</span>
-                  </div>
-                  <Input
-                    value={rule}
-                    onChange={(e) => updateRule(index, e.target.value)}
-                    placeholder={`Règle ${index + 1} (optionnel)`}
-                  />
-                  {rules.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeRule(index)}
-                      className="text-gray-500 hover:text-red-500"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Image de communauté (optionnel) */}
           <div className="space-y-2">
             <Label htmlFor="image">Image de communauté</Label>
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-300">
-                <Image className="h-8 w-8 text-gray-400" />
+              <div
+                className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border-2 border-dashed border-gray-300 overflow-hidden hover:bg-gray-50"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <Image className="h-8 w-8 text-gray-400" />
+                )}
               </div>
               <div className="flex-1">
                 <p className="text-sm text-gray-600">
                   Ajoutez une image pour personnaliser votre communauté
                 </p>
-                <Button type="button" variant="outline" size="sm" className="mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => imageInputRef.current?.click()}
+                >
                   Télécharger une image
                 </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Récapitulatif */}
-          <div className="rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 p-4">
-            <h4 className="mb-2 font-semibold text-gray-900">Récapitulatif</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <Hash className="h-4 w-4 text-blue-600" />
-                <span className="text-gray-700">r/{name || 'nomcommunauté'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {selectedType?.icon && <selectedType.icon className="h-4 w-4 text-blue-600" />}
-                <span className="text-gray-700">Communauté {selectedType?.name.toLowerCase()}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-600" />
-                <span className="text-gray-700">0 membres (vous êtes le premier!)</span>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                />
               </div>
             </div>
           </div>
@@ -271,13 +237,13 @@ export function CreateCommunity({ onClose }: CreateCommunityProps) {
             <Button
               type="submit"
               disabled={!name.trim() || !description.trim() || isSubmitting}
-              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700"
+              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white"
             >
               {isSubmitting ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Création...
-                </>
+                </div>
               ) : (
                 'Créer la communauté'
               )}

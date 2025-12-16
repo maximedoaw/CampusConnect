@@ -2,133 +2,230 @@
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  MessageCircle, 
-  Share2, 
-  Bookmark, 
-  MoreVertical, 
-  ChevronUp, 
-  ChevronDown,
-  Flame,
-  Clock,
-  User
+import {
+  MessageCircle,
+  Heart,
+  ThumbsUp,
+  ThumbsDown,
+  MoreVertical,
+  Share2,
+  Bookmark,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
 
 interface PostCardProps {
   id: string;
   title: string;
   content: string;
-  author: string;
-  authorRole: string;
-  authorAvatar: string;
-  community: string;
-  timeAgo: string;
-  comments: number;
-  upvotes: number;
-  isUpvoted: boolean;
-  engagement?: 'low' | 'medium' | 'high' | 'very-high';
+  createdAt: number;
+  image?: string;
+  author: {
+    username: string;
+    avatarUrl?: string;
+  } | null;
+  community: {
+    name: string;
+    image?: string;
+  } | null;
+  comments?: number;
+  likes?: number;
+  userLiked?: boolean;
 }
 
 export function PostCard({
+  id,
   title,
   content,
+  createdAt,
+  image,
   author,
-  authorRole,
-  authorAvatar,
   community,
-  timeAgo,
-  comments,
-  upvotes,
-  isUpvoted,
-  engagement = 'medium'
+  comments = 0,
+  likes = 0,
+  userLiked = false,
 }: PostCardProps) {
-  const [upvoted, setUpvoted] = useState(isUpvoted);
-  const [saved, setSaved] = useState(false);
-  const [voteCount, setVoteCount] = useState(upvotes);
+  const [likeCount, setLikeCount] = useState(likes);
+  const [liked, setLiked] = useState(userLiked);
+  const router = useRouter();
 
-  const handleUpvote = () => {
-    if (upvoted) {
-      setVoteCount(voteCount - 1);
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (liked) {
+      setLikeCount(likeCount - 1);
+      setLiked(false);
     } else {
-      setVoteCount(voteCount + 1);
+      setLikeCount(likeCount + 1);
+      setLiked(true);
     }
-    setUpvoted(!upvoted);
   };
 
+  const timeAgo = formatDistanceToNow(createdAt, { addSuffix: true, locale: fr });
+
   return (
-    <Card className="overflow-hidden border-gray-200 hover:border-gray-300 transition-colors">
-      <div className="flex">
-        {/* Votes */}
-        <div className="w-12 flex flex-col items-center py-3 border-r border-gray-100">
+    <Card
+      className="overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors bg-white hover:shadow-sm cursor-pointer"
+      onClick={() => router.push(`/comments/${id}`)}
+    >
+      <div className="p-4">
+        {/* Métadonnées Header */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+          {community ? (
+            <>
+              <div className="flex items-center gap-1.5 hover:underline">
+                <Avatar className="h-5 w-5 border border-gray-300">
+                  {community.image ? (
+                    <AvatarImage src={community.image} alt={community.name} />
+                  ) : (
+                    <AvatarFallback className="text-[10px] bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 font-bold">
+                      {community.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <span className="font-semibold text-gray-900 hover:text-black">
+                  r/{community.name}
+                </span>
+              </div>
+              <span className="text-gray-400">•</span>
+            </>
+          ) : null}
+
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500">Posté par</span>
+            <div className="flex items-center gap-1 hover:underline">
+              <Avatar className="h-4 w-4">
+                <AvatarImage src={author?.avatarUrl} />
+                <AvatarFallback className="text-[8px] bg-gray-100 text-gray-600">
+                  {author?.username?.substring(0, 1).toUpperCase() || '?'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-gray-900 font-medium hover:text-black">
+                u/{author?.username || 'anonyme'}
+              </span>
+            </div>
+            <span className="text-gray-400">•</span>
+            <span className="text-gray-500">{timeAgo}</span>
+          </div>
+        </div>
+
+        {/* Titre */}
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-orange-600 transition-colors">
+          {title}
+        </h3>
+
+        {/* Contenu texte */}
+        {content && content.length > 0 && (
+          <div className="mb-3">
+            <div
+              className="text-sm text-gray-800 leading-relaxed font-normal relative"
+              style={{
+                maxHeight: '150px',
+                overflow: 'hidden',
+                maskImage: content.length > 120 ? 'linear-gradient(180deg, #000 75%, transparent)' : 'none',
+                WebkitMaskImage: content.length > 120 ? 'linear-gradient(180deg, #000 75%, transparent)' : 'none',
+              }}
+            >
+              {content}
+            </div>
+            {content.length > 120 && (
+              <button
+                className="text-xs text-orange-600 font-medium hover:underline mt-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Voir plus
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Image du post */}
+        {image && (
+          <div className="my-3 rounded overflow-hidden max-w-full border border-gray-200">
+            <img
+              src={image}
+              alt={title}
+              className="max-h-[400px] w-auto object-contain cursor-zoom-in bg-gray-50"
+              loading="lazy"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+
+        {/* Barre d'actions avec les votes intégrés */}
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+          {/* Section Votes */}
+          <div className="flex items-center bg-gray-50 rounded-lg overflow-hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-8 gap-1.5 px-3 rounded-none border-r border-gray-200 ${liked
+                ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                : 'hover:bg-gray-200 text-gray-600'
+                }`}
+              onClick={handleLike}
+            >
+              {liked ? (
+                <Heart className="h-4 w-4 fill-current" />
+              ) : (
+                <ThumbsUp className="h-4 w-4" />
+              )}
+              <span className="font-medium">{likeCount}</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 rounded-none hover:bg-gray-200 text-gray-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Logique pour disliker
+              }}
+            >
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Bouton Commentaires */}
           <Button
             variant="ghost"
             size="sm"
-            className={`h-8 w-8 p-0 ${upvoted ? 'text-orange-500' : 'text-gray-400'}`}
-            onClick={handleUpvote}
+            className="h-8 gap-1.5 px-3 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/comments/${id}`);
+            }}
           >
-            <ChevronUp className="h-5 w-5" />
+            <MessageCircle className="h-4 w-4" />
+            <span className="font-medium">{comments}</span>
           </Button>
-          <span className="my-1 text-sm font-medium text-gray-900">{voteCount}</span>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400">
-            <ChevronDown className="h-5 w-5" />
+
+          {/* Bouton Partager */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800"
+          >
+            <Share2 className="h-4 w-4" />
           </Button>
-        </div>
 
-        {/* Contenu */}
-        <div className="flex-1 p-4">
-          {/* En-tête */}
-          <div className="flex items-center gap-2 mb-3">
-            <Avatar className="h-6 w-6">
-              <AvatarFallback className="text-xs bg-gray-100">
-                {authorAvatar.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1 text-sm">
-                <span className="font-medium text-gray-900 truncate">{author}</span>
-                <span className="text-gray-400">•</span>
-                <span className="text-orange-600 font-medium">r/{community}</span>
-              </div>
-              <div className="text-xs text-gray-500">
-                {timeAgo} • {authorRole}
-              </div>
-            </div>
-          </div>
+          {/* Bouton Enregistrer */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800"
+          >
+            <Bookmark className="h-4 w-4" />
+          </Button>
 
-          {/* Titre */}
-          <h3 className="mb-2 text-lg font-semibold text-gray-900">{title}</h3>
-
-          {/* Contenu */}
-          <p className="mb-4 text-gray-700 line-clamp-2">{content}</p>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-8 gap-1 text-gray-600">
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-sm">{comments}</span>
-            </Button>
-            
-            <Button variant="ghost" size="sm" className="h-8 gap-1 text-gray-600">
-              <Share2 className="h-4 w-4" />
-              <span className="text-sm">Partager</span>
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 gap-1 text-gray-600"
-              onClick={() => setSaved(!saved)}
-            >
-              <Bookmark className={`h-4 w-4 ${saved ? 'fill-current text-orange-500' : ''}`} />
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0 ml-auto text-gray-400"
+          {/* Bouton Plus d'options */}
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-gray-100 rounded text-gray-600"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>

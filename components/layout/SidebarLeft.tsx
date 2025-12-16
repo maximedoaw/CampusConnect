@@ -1,16 +1,20 @@
 'use client';
 
-import { SidebarContent } from './SidebarContent';
 import { useStore } from '@/store/useStore';
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Link from 'next/link';
 
 export default function SidebarLeft() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const communities = useQuery(api.communities.getUserCommunities);
 
   // Détecter mobile
   useEffect(() => {
@@ -23,6 +27,65 @@ export default function SidebarLeft() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full py-4">
+      <div className="px-4 mb-4">
+        {!isCollapsed && <h2 className="text-xl font-bold text-gray-800">Communautés</h2>}
+      </div>
+
+      <ScrollArea className="flex-1 px-3">
+        <div className="space-y-1">
+          {/* Lien Accueil */}
+          <Link href="/" passHref>
+            <Button
+              variant="ghost"
+              className={`w-full justify-start ${isCollapsed ? 'px-2' : ''}`}
+            >
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-sm">C</span>
+              </div>
+              {!isCollapsed && <span className="ml-3 font-medium text-gray-700">Accueil</span>}
+            </Button>
+          </Link>
+
+          <div className="my-4 border-t border-gray-100" />
+
+          {!isCollapsed && <h3 className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Vos Communautés</h3>}
+
+          {communities === undefined ? (
+            // Loading skeleton
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-2">
+                <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+                {!isCollapsed && <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />}
+              </div>
+            ))
+          ) : communities.length === 0 ? (
+            !isCollapsed && <div className="px-2 text-sm text-gray-500 italic">Vous n'avez rejoint aucune communauté.</div>
+          ) : (
+            communities.map((community) => (
+              <Link key={community._id} href={`/communities/${community._id}`} passHref className="w-full">
+                <Button
+                  variant="ghost"
+                  className={`w-full justify-start mb-1 h-auto py-2 ${isCollapsed ? 'px-2' : ''}`}
+                >
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage src={community.image} />
+                    <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 text-xs font-bold">
+                      {community.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!isCollapsed && <span className="ml-3 font-medium text-gray-700 truncate">{community.name}</span>}
+                </Button>
+              </Link>
+            ))
+          )}
+
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
   return (
     <>
       {/* Version Desktop - Sidebar fixe avec contenu scrollable */}
@@ -31,10 +94,10 @@ export default function SidebarLeft() {
           {/* Sidebar principale */}
           <div className={`
             relative transition-all duration-300 ease-in-out 
-            ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-64 opacity-100'}
+            ${isCollapsed ? 'w-20' : 'w-64'}
           `}>
             {/* Container avec effet de verre */}
-            <div className="h-full rounded-lg bg-gradient-to-br from-white/95 to-gray-50/95 backdrop-blur-sm border border-gray-200/50 shadow-sm overflow-hidden">
+            <div className="h-full rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
               {/* Contenu qui gère son propre scroll */}
               <SidebarContent />
             </div>
@@ -52,96 +115,28 @@ export default function SidebarLeft() {
               )}
             </button>
           </div>
-
-          {/* Mini sidebar collapsed */}
-          {isCollapsed && (
-            <div className="w-16 transition-all duration-300 ease-in-out">
-              <div className="h-full py-4 pl-2">
-                <ScrollArea className="h-full">
-                  <div className="flex flex-col items-center space-y-4 px-1">
-                    {/* Logo mini */}
-                    <button
-                      onClick={() => setIsCollapsed(false)}
-                      className="p-3 rounded-lg hover:bg-gray-100 transition-colors group relative"
-                    >
-                      <div className="flex flex-col items-center">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">C</span>
-                        </div>
-                        <span className="text-xs mt-1 text-gray-600 group-hover:text-orange-600">Accueil</span>
-                      </div>
-                    </button>
-
-                    {/* Séparateur */}
-                    <div className="w-full px-2">
-                      <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
-                    </div>
-
-                    {/* Communautés fréquentes (3 max) */}
-                    <div className="w-full px-2 space-y-3">
-                      <button className="w-full p-2 rounded-lg hover:bg-gray-100 transition-colors group">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 mx-auto flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">I</span>
-                        </div>
-                        <span className="text-xs mt-1 text-gray-600 truncate group-hover:text-blue-600">Info</span>
-                      </button>
-
-                      <button className="w-full p-2 rounded-lg hover:bg-gray-100 transition-colors group">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 mx-auto flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">P</span>
-                        </div>
-                        <span className="text-xs mt-1 text-gray-600 truncate group-hover:text-purple-600">Promo</span>
-                      </button>
-
-                      <button className="w-full p-2 rounded-lg hover:bg-gray-100 transition-colors group">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mx-auto flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">B</span>
-                        </div>
-                        <span className="text-xs mt-1 text-gray-600 truncate group-hover:text-green-600">Biblio</span>
-                      </button>
-                    </div>
-
-                    {/* Bouton expand */}
-                    <button
-                      onClick={() => setIsCollapsed(false)}
-                      className="mt-4 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <ChevronRight className="h-4 w-4 text-gray-600" />
-                    </button>
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
-          )}
         </div>
       </aside>
 
       {/* Version Mobile - Sheet */}
       <div className="lg:hidden">
-        <MobileSidebarSheet />
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden text-gray-600 hover:text-orange-600"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
+            <div className="h-full bg-white">
+              <SidebarContent />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </>
-  );
-}
-
-// Composant Sheet pour mobile
-function MobileSidebarSheet() {
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden text-gray-600 hover:text-orange-600"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
-        <div className="h-full">
-          <SidebarContent />
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }
