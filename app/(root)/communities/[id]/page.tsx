@@ -8,8 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/components/posts/PostCard';
 import { PostSkeleton } from '@/components/posts/PostSkeleton';
-import { Users } from 'lucide-react';
+import { Users, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChatInterface } from '@/components/communities/ChatInterface';
 
 export default function CommunityPage() {
     const params = useParams();
@@ -83,16 +85,18 @@ export default function CommunityPage() {
                             </Avatar>
                         </div>
 
-                        <Button
-                            onClick={handleToggleJoin}
-                            className={community.isJoined ? "bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:text-red-600 border" : "bg-gray-900 text-white hover:bg-gray-800"}
-                        >
-                            {community.isJoined ? "Ne plus suivre" : "Rejoindre"}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={handleToggleJoin}
+                                className={community.isJoined ? "bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:text-red-600 border" : "bg-gray-900 text-white hover:bg-gray-800"}
+                            >
+                                {community.isJoined ? "Ne plus suivre" : "Rejoindre"}
+                            </Button>
+                        </div>
                     </div>
 
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">r/{community.name}</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">c/{community.name}</h1>
                         <p className="text-gray-500 mt-2">{community.description}</p>
 
                         <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
@@ -106,33 +110,90 @@ export default function CommunityPage() {
                 </div>
             </div>
 
-            {/* Feed de la communauté */}
-            <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-800 ml-1">Publications récentes</h2>
+            {/* Contenu Tabs - Publications et Membres */}
+            <Tabs defaultValue="posts" className="w-full">
+                <TabsList className="w-full justify-start rounded-xl bg-white border border-gray-200 p-1 mb-4 h-auto">
+                    <TabsTrigger value="posts" className="flex-1 sm:flex-none data-[state=active]:bg-gray-100">Publications</TabsTrigger>
+                    <TabsTrigger value="forum" className="flex-1 sm:flex-none data-[state=active]:bg-gray-100 font-semibold text-orange-600">Forum</TabsTrigger>
+                    <TabsTrigger value="members" className="flex-1 sm:flex-none data-[state=active]:bg-gray-100">Membres</TabsTrigger>
+                    <TabsTrigger value="about" className="flex-1 sm:flex-none data-[state=active]:bg-gray-100">À propos</TabsTrigger>
+                </TabsList>
 
-                {posts === undefined ? (
-                    <PostSkeleton />
-                ) : posts.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-                        <p className="text-gray-500">Aucune publication pour le moment.</p>
+                <TabsContent value="posts" className="space-y-6 mt-0">
+                    {posts === undefined ? (
+                        <PostSkeleton />
+                    ) : posts.length === 0 ? (
+                        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                            <p className="text-gray-500">Aucune publication pour le moment.</p>
+                        </div>
+                    ) : (
+                        posts.map((post) => (
+                            // @ts-ignore - Types mismatch until codegen
+                            <PostCard
+                                key={post._id}
+                                id={post._id}
+                                title={post.title}
+                                content={post.content}
+                                createdAt={post.createdAt}
+                                image={post.image}
+                                author={post.author}
+                                community={post.community}
+                                comments={post.commentCount}
+                                upvotes={post.upvotes}
+                                downvotes={post.downvotes}
+                                userVote={post.userVote}
+                            />
+                        ))
+                    )}
+                </TabsContent>
+
+                <TabsContent value="forum" className="mt-0">
+                    <ChatInterface communityId={communityId} />
+                </TabsContent>
+
+                <TabsContent value="members" className="mt-0">
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                        <h2 className="text-lg font-bold mb-4">Membres récents</h2>
+                        {community.members && community.members.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {community.members.map((member) => (
+                                    <div key={member._id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-colors cursor-pointer">
+                                        <Avatar className="h-10 w-10">
+                                            <AvatarImage src={member.avatarUrl} />
+                                            <AvatarFallback>{member.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-semibold text-gray-900 text-sm">u/{member.username}</p>
+                                            <p className="text-xs text-gray-500">Membre</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-gray-500 italic">Aucun membre visible.</p>
+                        )}
+
+                        {community.memberCount > 5 && (
+                            <div className="mt-6 text-center">
+                                <Button variant="outline" size="sm">Voir tous les membres</Button>
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    posts.map((post) => (
-                        <PostCard
-                            key={post._id}
-                            id={post._id}
-                            title={post.title}
-                            content={post.content}
-                            createdAt={post.createdAt}
-                            image={post.image}
-                            author={post.author}
-                            community={post.community}
-                            comments={0} // TODO: Fetch separate count if needed
-                            likes={0} // TODO: Fetch separate count if needed
-                        />
-                    ))
-                )}
-            </div>
+                </TabsContent>
+
+                <TabsContent value="about" className="mt-0">
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+                        <h3 className="font-bold text-gray-900">À propos de cette communauté</h3>
+                        <p className="text-gray-600 leading-relaxed">
+                            {community.description || "Pas de description."}
+                        </p>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <Info className="h-4 w-4" />
+                            Créée le {new Date(community.createdAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     )
 }

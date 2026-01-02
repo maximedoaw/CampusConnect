@@ -168,8 +168,9 @@ export function Feed() {
                 image={post.image}
                 author={post.author}
                 community={post.community}
-                comments={0}
-                likes={0}
+                upvotes={post.upvotes}
+                downvotes={post.downvotes}
+                userVote={post.userVote}
               />
             ))
           )}

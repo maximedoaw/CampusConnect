@@ -125,7 +125,7 @@ export function CreateCommunity({ onClose }: CreateCommunityProps) {
             </Label>
             <div className="flex">
               <div className="flex items-center rounded-l-md border border-r-0 bg-gray-50 px-3 text-gray-500">
-                r/
+                c/
               </div>
               <Input
                 id="name"

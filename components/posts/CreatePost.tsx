@@ -172,7 +172,7 @@ export function CreatePost({ onClose }: CreatePostProps) {
                               )}
                             </Avatar>
                             <div className="flex flex-col min-w-0 text-left">
-                              <span className="font-medium truncate text-sm">r/{community.name}</span>
+                              <span className="font-medium truncate text-sm">c/{community.name}</span>
                               {community.description && (
                                 <span className="text-xs text-gray-500 truncate block">
                                   {community.description}
@@ -214,7 +214,7 @@ export function CreatePost({ onClose }: CreatePostProps) {
                               )}
                             </Avatar>
                             <div className="flex flex-col min-w-0 text-left">
-                              <span className="font-medium truncate text-sm">r/{community.name}</span>
+                              <span className="font-medium truncate text-sm">c/{community.name}</span>
                               {community.description && (
                                 <span className="text-xs text-gray-500 truncate block">
                                   {community.description}

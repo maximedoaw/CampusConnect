@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   MessageCircle,
-  Heart,
   ThumbsUp,
   ThumbsDown,
   MoreVertical,
@@ -16,9 +15,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface PostCardProps {
-  id: string;
+  id: Id<"posts">;
   title: string;
   content: string;
   createdAt: number;
@@ -32,8 +35,9 @@ interface PostCardProps {
     image?: string;
   } | null;
   comments?: number;
-  likes?: number;
-  userLiked?: boolean;
+  upvotes?: number;
+  downvotes?: number;
+  userVote?: "like" | "dislike";
 }
 
 export function PostCard({
@@ -45,22 +49,23 @@ export function PostCard({
   author,
   community,
   comments = 0,
-  likes = 0,
-  userLiked = false,
+  upvotes = 0,
+  downvotes = 0,
+  userVote,
 }: PostCardProps) {
-  const [likeCount, setLikeCount] = useState(likes);
-  const [liked, setLiked] = useState(userLiked);
   const router = useRouter();
+  const vote = useMutation(api.like.vote);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleVote = (e: React.MouseEvent, type: "like" | "dislike") => {
     e.stopPropagation();
-    if (liked) {
-      setLikeCount(likeCount - 1);
-      setLiked(false);
-    } else {
-      setLikeCount(likeCount + 1);
-      setLiked(true);
+    vote({ targetId: id, targetType: "post", voteType: type });
+  };
+
+  const formatCount = (count: number) => {
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
     }
+    return count.toString();
   };
 
   const timeAgo = formatDistanceToNow(createdAt, { addSuffix: true, locale: fr });
@@ -75,7 +80,13 @@ export function PostCard({
         <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
           {community ? (
             <>
-              <div className="flex items-center gap-1.5 hover:underline">
+              <div
+                className="flex items-center gap-1.5 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Optional: navigate to community?
+                }}
+              >
                 <Avatar className="h-5 w-5 border border-gray-300">
                   {community.image ? (
                     <AvatarImage src={community.image} alt={community.name} />
@@ -86,7 +97,7 @@ export function PostCard({
                   )}
                 </Avatar>
                 <span className="font-semibold text-gray-900 hover:text-black">
-                  r/{community.name}
+                  c/{community.name}
                 </span>
               </div>
               <span className="text-gray-400">•</span>
@@ -154,82 +165,96 @@ export function PostCard({
           </div>
         )}
 
-        {/* Barre d'actions avec les votes intégrés */}
+        {/* Barre d'actions */}
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-          {/* Section Votes */}
-          <div className="flex items-center bg-gray-50 rounded-lg overflow-hidden">
+
+          {/* Voting System */}
+          <div className="flex items-center bg-gray-50 rounded-full border border-gray-200 overflow-hidden">
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 gap-1.5 px-3 rounded-none border-r border-gray-200 ${liked
-                ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
-                : 'hover:bg-gray-200 text-gray-600'
+              className={`h-8 gap-1.5 px-3 rounded-none border-r border-gray-200 hover:bg-gray-100 ${userVote === 'like' ? 'text-orange-600 bg-orange-50' : 'text-gray-600'
                 }`}
-              onClick={handleLike}
+              onClick={(e) => handleVote(e, "like")}
             >
-              {liked ? (
-                <Heart className="h-4 w-4 fill-current" />
-              ) : (
-                <ThumbsUp className="h-4 w-4" />
-              )}
-              <span className="font-medium">{likeCount}</span>
+              <AnimatePresence mode="wait">
+                {userVote === 'like' ? (
+                  <motion.div
+                    key="liked"
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1.2, rotate: -15 }}
+                    exit={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                  >
+                    <ThumbsUp className="h-4 w-4 fill-current" />
+                  </motion.div>
+                ) : (
+                  <ThumbsUp className="h-4 w-4" />
+                )}
+              </AnimatePresence>
+              <span className="font-medium text-sm">{formatCount(upvotes)}</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-3 rounded-none hover:bg-gray-200 text-gray-600"
-              onClick={(e) => {
-                e.stopPropagation();
-                // Logique pour disliker
-              }}
+              className={`h-8 px-3 rounded-none hover:bg-gray-100 ${userVote === 'dislike' ? 'text-red-600 bg-red-50' : 'text-gray-600'
+                }`}
+              onClick={(e) => handleVote(e, "dislike")}
             >
-              <ThumbsDown className="h-4 w-4" />
+              <AnimatePresence mode="wait">
+                {userVote === 'dislike' ? (
+                  <motion.div
+                    key="disliked"
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1.2, rotate: 15 }}
+                    exit={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                  >
+                    <ThumbsDown className="h-4 w-4 fill-current" />
+                  </motion.div>
+                ) : (
+                  <ThumbsDown className="h-4 w-4" />
+                )}
+              </AnimatePresence>
+              {/* Optional: Show downvotes check boolean or preference */}
             </Button>
           </div>
 
-          {/* Bouton Commentaires */}
+          {/* Commentaires */}
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 px-3 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800"
+            className="h-8 gap-1.5 px-3 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-800"
             onClick={(e) => {
               e.stopPropagation();
               router.push(`/comments/${id}`);
             }}
           >
             <MessageCircle className="h-4 w-4" />
-            <span className="font-medium">{comments}</span>
+            <span className="font-medium">{formatCount(comments)}</span>
           </Button>
 
-          {/* Bouton Partager */}
+          {/* Share */}
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 px-3 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800"
+            className="h-8 px-3 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-800"
+            onClick={(e) => e.stopPropagation()}
           >
             <Share2 className="h-4 w-4" />
           </Button>
 
-          {/* Bouton Enregistrer */}
+          {/* Bookmark */}
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 px-3 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800"
+            className="h-8 px-3 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-800"
+            onClick={(e) => e.stopPropagation()}
           >
             <Bookmark className="h-4 w-4" />
           </Button>
 
-          {/* Bouton Plus d'options */}
-          <div className="ml-auto">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 hover:bg-gray-100 rounded text-gray-600"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </div>
     </Card>

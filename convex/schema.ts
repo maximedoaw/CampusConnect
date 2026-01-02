@@ -75,9 +75,19 @@ export default defineSchema({
       v.id("posts"),
       v.id("comments")
     ),
+    type: v.optional(v.union(v.literal("like"), v.literal("dislike"))),
     createdAt: v.number(),
   })
-    .index("by_user", ["userId"])
     .index("by_target", ["targetType", "targetId"]),
+
+  messages: defineTable({
+    body: v.string(),
+    image: v.optional(v.string()), // storageId
+    communityId: v.id("communities"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_community", ["communityId"])
+    .index("by_createdAt", ["createdAt"]),
 
 })

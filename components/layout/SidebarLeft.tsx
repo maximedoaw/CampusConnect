@@ -118,25 +118,7 @@ export default function SidebarLeft() {
         </div>
       </aside>
 
-      {/* Version Mobile - Sheet */}
-      <div className="lg:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden text-gray-600 hover:text-orange-600"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
-            <div className="h-full bg-white">
-              <SidebarContent />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* Version Mobile - Gérée par la NavBar désormais pour éviter les doublons */}
     </>
   );
 }

@@ -73,7 +73,7 @@ export function SidebarRight() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-gray-900 text-sm truncate group-hover:underline">
-                      r/{community.name}
+                      c/{community.name}
                     </h3>
                     <p className="text-xs text-gray-500 truncate">{community.memberCount} membres</p>
                   </div>
@@ -82,8 +82,8 @@ export function SidebarRight() {
                   variant={community.isJoined ? "outline" : "secondary"}
                   size="sm"
                   className={`rounded-full px-4 h-8 text-xs font-bold transition-all active:scale-95 ${community.isJoined
-                      ? "border-gray-300 text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                      : "bg-gray-900 text-white hover:bg-gray-800"
+                    ? "border-gray-300 text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                    : "bg-gray-900 text-white hover:bg-gray-800"
                     }`}
                   onClick={(e) => handleToggleFollow(e, community._id, community.name, community.isJoined)}
                 >
@@ -121,22 +121,7 @@ export function SidebarRight() {
         <SidebarContent />
       </div>
 
-      <div className="xl:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-gray-600 hover:text-orange-600"
-            >
-              <Globe className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[85vw] max-w-sm p-4 pt-10">
-            <SidebarContent />
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* Version Mobile - Masqué pour ne pas encombrer l'interface (accessible autrement ou à ajouter dans NavBar plus tard) */}
     </>
   );
 }

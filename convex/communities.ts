@@ -226,10 +226,21 @@ export const getCommunity = query({
             }
         }
 
-        const memberCount = await ctx.db.query("follows")
+        const members = await ctx.db.query("follows")
             .withIndex("by_target", (q) => q.eq("targetType", "community").eq("targetId", community._id))
             .collect();
             
+        const memberList = await Promise.all(
+            members.slice(0, 5).map(async (member) => {
+                const user = await ctx.db.get(member.followerId);
+                return user ? {
+                    _id: user._id,
+                    username: user.username,
+                    avatarUrl: user.avatarUrl,
+                } : null;
+            })
+        );
+
         let imageUrl = undefined;
         if (community.image) {
             imageUrl = await ctx.storage.getUrl(community.image) || undefined;
@@ -238,7 +249,8 @@ export const getCommunity = query({
         return {
             ...community,
             image: imageUrl,
-            memberCount: memberCount.length,
+            memberCount: members.length,
+            members: memberList.filter((m): m is NonNullable<typeof m> => m !== null),
             isJoined,
         };
     },

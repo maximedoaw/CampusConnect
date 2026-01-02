@@ -58,6 +58,25 @@ export const getFeed = query({
                    communityImageUrl = await ctx.storage.getUrl(community.image) || undefined;
                 }
 
+                const votes = await ctx.db.query("likes")
+                    .withIndex("by_target", (q) => q.eq("targetType", "post").eq("targetId", post._id))
+                    .collect();
+
+                const upvotes = votes.filter(v => v.type === "like").length;
+                const downvotes = votes.filter(v => v.type === "dislike").length;
+                let userVote = undefined;
+
+                const identity = await ctx.auth.getUserIdentity();
+                if (identity) {
+                         const user = await ctx.db.query("users")
+                            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+                            .first();
+                        if (user) {
+                            const myVote = votes.find(v => v.userId === user._id);
+                            if (myVote) userVote = myVote.type;
+                        }
+                    }
+
                 return {
                     ...post,
                     image: imageUrl,
@@ -69,6 +88,9 @@ export const getFeed = query({
                         name: community.name,
                         image: communityImageUrl,
                     } : null,
+                    upvotes,
+                    downvotes,
+                    userVote,
                 };
             })
     );
@@ -94,6 +116,32 @@ export const getPost = query({
             communityImageUrl = await ctx.storage.getUrl(community.image) || undefined;
         }
 
+        const commentCount = await ctx.db.query("comments")
+            .withIndex("by_post", (q) => q.eq("postId", post._id))
+            .collect()
+            .then((comments) => comments.length);
+
+        const votes = await ctx.db.query("likes")
+            .withIndex("by_target", (q) => q.eq("targetType", "post").eq("targetId", post._id))
+            .collect();
+
+        const upvotes = votes.filter(v => v.type === "like").length;
+        const downvotes = votes.filter(v => v.type === "dislike").length;
+        let userVote = undefined;
+
+        if (args.postId) { // Check auth for single post
+             const identity = await ctx.auth.getUserIdentity();
+             if (identity) {
+                 const user = await ctx.db.query("users")
+                    .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+                    .first();
+                if (user) {
+                     const myVote = votes.find(v => v.userId === user._id);
+                     if (myVote) userVote = myVote.type;
+                }
+             }
+        }
+
         return {
             ...post,
             image: imageUrl,
@@ -105,6 +153,10 @@ export const getPost = query({
                 name: community.name,
                 image: communityImageUrl,
             } : null,
+            upvotes,
+            downvotes,
+            userVote,
+            commentCount,
         };
     },
 });
@@ -132,6 +184,30 @@ export const getCommunityPosts = query({
                    communityImageUrl = await ctx.storage.getUrl(community.image) || undefined;
                 }
 
+                const commentCount = await ctx.db.query("comments")
+                    .withIndex("by_post", (q) => q.eq("postId", post._id))
+                    .collect()
+                    .then((comments) => comments.length);
+
+                const votes = await ctx.db.query("likes")
+                    .withIndex("by_target", (q) => q.eq("targetType", "post").eq("targetId", post._id))
+                    .collect();
+
+                const upvotes = votes.filter(v => v.type === "like").length;
+                const downvotes = votes.filter(v => v.type === "dislike").length;
+                let userVote = undefined;
+
+                const identity = await ctx.auth.getUserIdentity();
+                 if (identity) {
+                     const user = await ctx.db.query("users")
+                        .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+                        .first();
+                    if (user) {
+                         const myVote = votes.find(v => v.userId === user._id);
+                         if (myVote) userVote = myVote.type;
+                    }
+                 }
+
                 return {
                     ...post,
                     image: imageUrl,
@@ -143,6 +219,9 @@ export const getCommunityPosts = query({
                         name: community.name,
                         image: communityImageUrl,
                     } : null,
+                    upvotes,
+                    downvotes,
+                    userVote,
                 };
             })
         );

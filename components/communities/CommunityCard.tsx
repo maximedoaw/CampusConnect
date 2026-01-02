@@ -63,7 +63,7 @@ export function CommunityCard({
                             </div>
                         </div>
                         <div className="mb-1">
-                            <h1 className="text-xl font-bold text-gray-900 leading-tight">r/{name}</h1>
+                            <h1 className="text-xl font-bold text-gray-900 leading-tight">c/{name}</h1>
                         </div>
                     </div>
                 </div>

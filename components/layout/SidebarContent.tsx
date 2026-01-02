@@ -233,7 +233,7 @@ export function SidebarContent() {
                                         <div className="flex-1 text-left">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-medium text-gray-900 group-hover:text-orange-600">
-                                                    r/{community.name}
+                                                    c/{community.name}
                                                 </span>
                                                 {community.trending && (
                                                     <Sparkles className="h-3 w-3 text-orange-500" />
